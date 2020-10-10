@@ -3,7 +3,7 @@ import { Canvas } from '@antv/g-canvas';
 // import { Canvas } from '@antv/g-svg';
 
 const canvas = new Canvas({
-  container: 'c1',
+  container: 'g',
   width: 500,
   height: 500,
 });

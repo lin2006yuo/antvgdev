@@ -4,9 +4,12 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin")
 
 module.exports = {
   mode: "development",
-  entry: "./src/index.js",
+  entry: {
+    g: "./src/g.js",
+    g6: "./src/g6.js",
+  },
   output: {
-    filename: "bundle.js",
+    filename: "[name].bundle.js",
     path: path.resolve(__dirname, "dist"),
   },
   devtool: "cheap-source-map",
