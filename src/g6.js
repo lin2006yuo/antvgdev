@@ -1,146 +1,237 @@
-import { Graph } from "@antv/g6"
+import G6 from "@antv/g6"
 
-const graph = new Graph({
-  container: "g6", // String | HTMLElement，必须，在 Step 1 中创建的容器 id 或容器本身
-  width: 800, // Number，必须，图的宽度
-  height: 500, // Number，必须，图的高度
-  modes: {
-    default: ["drag-canvas", "zoom-canvas", "drag-node"], // 允许拖拽画布、放缩画布、拖拽节点
-    edit: []
-  },
-  nodeStateStyles: {
-    // 鼠标 hover 上节点，即 hover 状态为 true 时的样式
-    hover: {
-      fill: "lightsteelblue"
-    },
-    // 鼠标点击节点，即 click 状态为 true 时的样式
-    click: {
-      stroke: "#000",
-      lineWidth: 3
+G6.registerNode(
+  "diamond",
+  {
+    draw(cfg, group) {
+      const size = this.getSize(cfg) // 转换成 [width, height] 的模式
+      const color = cfg.color
+      const width = size[0]
+      const height = size[1]
+      //  / 1 \
+      // 4     2
+      //  \ 3 /
+      const path = [
+        ["M", 0, 0 - height / 2], // 上部顶点
+        ["L", width / 2, 0], // 右侧顶点
+        ["L", 0, height / 2], // 下部顶点
+        ["L", -width / 2, 0], // 左侧顶点
+        ["Z"] // 封闭
+      ]
+      const style = G6.Util.mix(
+        {},
+        {
+          path: path,
+          stroke: color
+        },
+        cfg.style
+      )
+      // 增加一个 path 图形作为 keyShape
+      const keyShape = group.addShape("path", {
+        attrs: {
+          ...style
+        },
+        draggable: true,
+        name: "diamond-keyShape"
+      })
+      // 返回 keyShape
+      return keyShape
     }
   },
-  // 边不同状态下的样式集合
-  edgeStateStyles: {
-    // 鼠标点击边，即 click 状态为 true 时的样式
-    click: {
-      stroke: "steelblue"
-    }
-  },
-  // fitView: true,
-  // fitViewPadding: [20, 40, 50, 20],
-  layout: {
-    // Object，可选，布局的方法及其配置项，默认为 random 布局。
-    type: "force", // 指定为力导向布局
-    preventOverlap: true, // 防止节点重叠
-    nodeSize: 100 // 节点大小，用于算法中防止节点重叠时的碰撞检测。由于已经在上一节的元素配置中设置了每个节点的 size 属性，则不需要在此设置 nodeSize。
-  },
-  defaultNode: {
-    size: 30, // 节点大小
-    // ...                 // 节点的其他配置
-    // 节点样式配置
-    style: {
-      fill: "steelblue", // 节点填充色
-      stroke: "red", // 节点描边色
-      lineWidth: 1 // 节点描边粗细
-    },
-    // 节点上的标签文本配置
-    labelCfg: {
-      // 节点上的标签文本样式配置
-      style: {
-        fill: "#fff" // 节点标签文字颜色
+  // 注意这里继承了 'single-node'
+  "single-node"
+)
+
+G6.registerNode(
+  "custom",
+  {
+    // 响应状态变化
+    setState(name, value, item) {
+      const group = item.getContainer()
+      const shape = group.get("children")[0] // 顺序根据 draw 时确定
+      if (name === "running") {
+        if (value) {
+          shape.animate(
+            {
+              r: 20
+            },
+            {
+              repeat: true,
+              duration: 1000
+            }
+          )
+        } else {
+          shape.stopAnimate()
+          shape.attr("r", 10)
+        }
       }
     }
   },
-  // 边在默认状态下的样式配置（style）和其他配置
-  defaultEdge: {
-    // ...                 // 边的其他配置
-    // 边样式配置
-    style: {
-      opacity: 0.6, // 边透明度
-      stroke: "grey" // 边描边颜色
+  "single-node"
+)
+
+G6.registerNode(
+  "dom-node",
+  {
+    draw: (cfg, group) => {
+      return group.addShape("dom", {
+        attrs: {
+          width: cfg.size[0],
+          height: cfg.size[1],
+          // 传入 DOM 的 html
+          html: `
+        <div style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${
+          cfg.size[0] - 5
+        }px; height: ${cfg.size[1] - 5}px; display: flex;">
+          <div style="height: 100%; width: 33%; background-color: #CDDDFD">
+            <img alt="img" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
+          </div>
+          <span style="margin:auto; padding:auto; color: #5B8FF9">${
+            cfg.label
+          }</span>
+        </div>
+          `
+        },
+        draggable: true
+      })
+    }
+  },
+  "single-node"
+)
+
+G6.registerNode(
+  "rect-xml",
+  (cfg) => `
+  <rect style={{
+    width: 100, height: 20, fill: '#1890ff', stroke: '#1890ff', radius: [6, 6, 0, 0]
+  }} keyshape="true" name="test">
+    <text style={{ 
+			marginTop: 2, 
+			marginLeft: 50, 
+      textAlign: 'center', 
+      fontWeight: 'bold', 
+      fill: '#fff' }} 
+			name="title">${cfg.label || cfg.id}</text>
+
+
+
+  </rect>
+`
+)
+
+const percentageBar = ({ width, used, height = 12 }) => `
+  <rect style={{
+    marginLeft: 10,
+    marginTop: 3,
+    width: ${width},
+    height: ${height},
+    fill: '#fff',
+    stroke: '#1890ff'
+  }} name="body" >
+    <rect style={{
+      marginLeft: 10,
+      width: ${(width / 100) * used},
+      height: ${height},
+      fill: '#1890ff',
+      stroke: '#1890ff'
+    }}/>
+  </rect>
+`
+
+const textXML = (cfg) => `
+<group>
+  <rect style={{
+    width: 100, height: 20, fill: '#1890ff', stroke: '#1890ff', radius: [6, 6, 0, 0]
+  }}>
+    <text style={{ marginTop: 2, marginLeft: 50, 
+			textAlign: 'center',
+			fontWeight: 'bold', 
+			fill: '#fff' }}>${cfg.id}</text>
+  </rect>
+  <rect style={{ width: 100, height: 80, fill: 'rgba(24,144,255,0.15)', 
+		radius: [0, 0, 6, 6] }} 
+		keyshape="true" 
+		cursor="move">
+    <text style={{marginLeft: 10 ,fill: "red"}}>hah</text>
+    <text style={{ marginTop: 5, marginLeft: 10, fill: '#333'}}>${cfg.metric}: </text>
+    <text style={{
+      marginTop: 1,
+      marginLeft: 20,
+      fontSize: 10,
+      fill: '#1890ff',
+    }}>${cfg.cpuUsage}%</text>
+
+  </rect>
+</group>
+`
+
+G6.registerNode("test-xml", textXML)
+
+const data = {
+  nodes: [
+    {
+      id: "circle",
+      label: "Circle",
+      x: 250,
+      y: 150,
+      type: "modelRect"
     },
-    // 边上的标签文本配置
-    labelCfg: {
-      autoRotate: true // 边上的标签文本根据边的方向旋转
+    {
+      id: "node2",
+      label: "node2",
+      x: 300,
+      y: 400,
+      // 该节点可选的连接点集合，该点有两个可选的连接点
+      anchorPoints: [
+        [0.5, 0],
+        [1, 0.5]
+      ],
+      type: "rect"
+    }
+  ],
+  edges: [
+    {
+      source: "node2",
+      target: "node1",
+      // 该边连入 source 点的第 1 个 anchorPoint，
+      sourceAnchor: 1,
+      // 该边连入 source 点的第 1 个 anchorPoint，
+      targetAnchor: 1,
+      style: {
+        endArrow: true
+      }
+    },
+    {
+      source: "node2",
+      target: "node1",
+      // 该边连入 source 点的第 1 个 anchorPoint，
+      sourceAnchor: 1,
+      // 该边连入 source 点的第 1 个 anchorPoint，
+      targetAnchor: 1,
+      style: {
+        endArrow: true
+      }
+    }
+  ]
+}
+
+const graph = new G6.Graph({
+  container: "g6",
+  width: 500,
+  height: 500,
+  defaultNode: {
+    linkPoints: {
+      top: true,
+      right: true,
+      bottom: true,
+      left: true,
+      // the diameter of the linkPoint
+      size: 10,
+      lineWidth: 1,
+      fill: "#fff",
+      stroke: "#1890FF"
     }
   }
 })
-
-// 鼠标进入节点
-graph.on("node:mouseenter", (e) => {
-  const nodeItem = e.item // 获取鼠标进入的节点元素对象
-  graph.setItemState(nodeItem, "hover", true) // 设置当前节点的 hover 状态为 true
-})
-
-// 鼠标离开节点
-graph.on("node:mouseleave", (e) => {
-  const nodeItem = e.item // 获取鼠标离开的节点元素对象
-  graph.setItemState(nodeItem, "hover", false) // 设置当前节点的 hover 状态为 false
-})
-
-// 点击节点
-graph.on("node:click", (e) => {
-  // 先将所有当前是 click 状态的节点置为非 click 状态
-  const clickNodes = graph.findAllByState("node", "click")
-  clickNodes.forEach((cn) => {
-    graph.setItemState(cn, "click", false)
-  })
-  const nodeItem = e.item // 获取被点击的节点元素对象
-  graph.setItemState(nodeItem, "click", true) // 设置当前节点的 click 状态为 true
-})
-
-// 点击边
-graph.on("edge:click", (e) => {
-  // 先将所有当前是 click 状态的边置为非 click 状态
-  const clickEdges = graph.findAllByState("edge", "click")
-  clickEdges.forEach((ce) => {
-    graph.setItemState(ce, "click", false)
-  })
-  const edgeItem = e.item // 获取被点击的边元素对象
-  graph.setItemState(edgeItem, "click", true) // 设置当前边的 click 状态为 true
-})
-
-const main = async () => {
-  const response = await fetch(
-    "https://gw.alipayobjects.com/os/basement_prod/6cae02ab-4c29-44b2-b1fd-4005688febcb.json"
-  )
-  const remoteData = await response.json()
-  console.log({ remoteData })
-
-  const nodes = remoteData.nodes
-  nodes.forEach((node) => {
-    if (!node.style) {
-      node.style = {}
-    }
-    switch (
-      node.class // 根据节点数据中的 class 属性配置图形
-    ) {
-      case "c0": {
-        node.type = "circle" // class = 'c0' 时节点图形为 circle
-        break
-      }
-      case "c1": {
-        node.type = "rect" // class = 'c1' 时节点图形为 rect
-        node.size = [35, 20] // class = 'c1' 时节点大小
-        break
-      }
-      case "c2": {
-        node.type = "ellipse" // class = 'c2' 时节点图形为 ellipse
-        node.size = [35, 20] // class = 'c2' 时节点大小
-        break
-      }
-    }
-  })
-
-  const edges = remoteData.edges
-  edges.forEach((edge) => {
-    if (!edge.style) {
-      edge.style = {}
-    }
-    edge.style.lineWidth = edge.weight // 边的粗细映射边数据中的 weight 属性数值
-  })
-
-  graph.data(remoteData) // 加载远程数据
-  graph.render() // 渲染
-}
-main()
+graph.data(data)
+graph.render()

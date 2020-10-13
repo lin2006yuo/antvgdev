@@ -4,9 +4,64 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>antV/g dev</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
   </head>
   <body>
     <div id="g"></div>
     <div id="g6"></div>
+    <div id="app">
+      <svg
+        width="500px"
+        height="500px"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path :d="pathD" stroke="black" id="svg" fill="transparent" />
+      </svg>
+      <div>x: <input type="number" v-model.number="x" /></div>
+      <div>y: <input type="number" v-model.number="y" /></div>
+      <div>w: <input type="number" v-model.number="w" /></div>
+      <div>h: <input type="number" v-model.number="h" /></div>
+      <div>r: <input type="number" v-model.number="r" /></div>
+    </div>
+    <script>
+      let vm = new Vue({
+        el: "#app",
+        data() {
+          return {
+            x: 200,
+            y: 200,
+            w: 40,
+            h: 40,
+            r: 5
+          }
+        },
+        computed: {
+          pathD: function () {
+            const x = this.x
+            const y = this.y
+            const w = this.w
+            const h = this.h
+            const r = this.r
+            const p = `
+              M${x + r} ${y}
+              L${x + w - r} ${y}
+              Q${x + w} ${y} ${x + w} ${y + r}
+              L${x + w} ${y + h - r}
+              Q${x + w} ${y + h} ${x + w - r} ${y + h}
+              L${x + r} ${y + h}
+              Q${x} ${y + h} ${x} ${x + h - r}
+              L${x} ${y + r}
+              Q${x} ${y} ${x + r} ${y}
+            `
+            console.log({p})
+            return p
+          }
+        },
+        methods: {
+          set() {}
+        }
+      })
+    </script>
   </body>
 </html>
