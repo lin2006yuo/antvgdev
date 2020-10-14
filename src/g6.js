@@ -1,39 +1,82 @@
 import G6 from "@antv/g6"
+import { transferG6Path } from "./utils"
 
 G6.registerNode(
-  "diamond",
+  "round",
   {
     draw(cfg, group) {
-      const size = this.getSize(cfg) // 转换成 [width, height] 的模式
       const color = cfg.color
-      const width = size[0]
-      const height = size[1]
-      //  / 1 \
-      // 4     2
-      //  \ 3 /
+      const w = cfg.size[0] || 20
+      const h = cfg.size[1] || 20
+      const x = cfg.x || 0
+      const y = cfg.y || 0
+      const r = cfg.r
+
       const path = [
-        ["M", 0, 0 - height / 2], // 上部顶点
-        ["L", width / 2, 0], // 右侧顶点
-        ["L", 0, height / 2], // 下部顶点
-        ["L", -width / 2, 0], // 左侧顶点
-        ["Z"] // 封闭
+        ["M", x + r, y],
+        ["L", x + w - r, y],
+        ["Q", x + w, y, x + w, y + r],
+        ["L", x + w, y + h - r],
+        ["Q", x + w, y + h, x + w - r, y + h],
+        ["L", x + r, y + h],
+        ["Q", x, y + h, x, y + h - r],
+        ["L", x, y + r],
+        ["Q", x, y, x + r, y],
+        ["Z"]
       ]
       const style = G6.Util.mix(
         {},
         {
           path: path,
+          lineWidth: 2,
+          fill: "red",
           stroke: color
         },
         cfg.style
       )
-      // 增加一个 path 图形作为 keyShape
       const keyShape = group.addShape("path", {
         attrs: {
           ...style
         },
         draggable: true,
-        name: "diamond-keyShape"
+        name: "round"
       })
+
+      // 三角图标
+      const tri_r = 5
+      const tri_point = [w + 4, h / 2 - tri_r / 2]
+      group.addShape("polygon", {
+        attrs: {
+          points: [
+            [tri_point[0], tri_point[1]],
+            [tri_point[0] + tri_r, tri_point[1] + tri_r / 2],
+            [tri_point[0], tri_point[1] + tri_r]
+          ],
+          fill: "blue"
+        }
+      })
+
+      if (cfg.label) {
+        // 如果有文本
+        // 如果需要复杂的文本配置项，可以通过 labeCfg 传入
+        // const style = (cfg.labelCfg && cfg.labelCfg.style) || {};
+        // style.text = cfg.label;
+        const label = group.addShape("text", {
+          attrs: {
+            x: 0 + w + 12, // 居中
+            y: 0 + h / 2,
+            textAlign: "left",
+            textBaseline: "middle",
+            text: cfg.label,
+            fill: "#666"
+          },
+          // must be assigned in G6 3.3 and later versions. it can be any value you want
+          name: "text-shape",
+          // 设置 draggable 以允许响应鼠标的图拽事件
+          draggable: true
+        })
+      }
+
       // 返回 keyShape
       return keyShape
     }
@@ -42,175 +85,232 @@ G6.registerNode(
   "single-node"
 )
 
-G6.registerNode(
-  "custom",
-  {
-    // 响应状态变化
-    setState(name, value, item) {
-      const group = item.getContainer()
-      const shape = group.get("children")[0] // 顺序根据 draw 时确定
-      if (name === "running") {
-        if (value) {
-          shape.animate(
-            {
-              r: 20
-            },
-            {
-              repeat: true,
-              duration: 1000
-            }
-          )
-        } else {
-          shape.stopAnimate()
-          shape.attr("r", 10)
-        }
+G6.registerNode("work-node", {
+  draw(cfg, group) {
+    const style = G6.Util.mix(
+      {},
+      {
+        r: cfg.r,
+        x: 10, // 10是round节点的w
+        y: 10 // 10是round节点的h
+      },
+      cfg.style
+    )
+    const keyShape = group.addShape("circle", {
+      attrs: {
+        ...style,
+        stroke: "red",
+        fill: cfg.state === "UNDO" || cfg.state === "DOING" ? "" : "red",
+        lineWidth: 2
       }
-    }
-  },
-  "single-node"
-)
+    })
 
-G6.registerNode(
-  "dom-node",
-  {
-    draw: (cfg, group) => {
-      return group.addShape("dom", {
+    // 三角图标
+    const w = cfg.r * 2
+    const h = cfg.r * 2
+    const tri_r = 5
+    const tri_point = [w / 2 + 10 + 4, h / 2 - tri_r / 2 - 10] // 10是round节点的w，h
+    group.addShape("polygon", {
+      attrs: {
+        points: [
+          [tri_point[0], tri_point[1]],
+          [tri_point[0] + tri_r, tri_point[1] + tri_r / 2],
+          [tri_point[0], tri_point[1] + tri_r]
+        ],
+        fill: "blue"
+      }
+    })
+
+    if (cfg.state === "UNDO") {
+      group.addShape("path", {
         attrs: {
-          width: cfg.size[0],
-          height: cfg.size[1],
-          // 传入 DOM 的 html
-          html: `
-        <div style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${
-          cfg.size[0] - 5
-        }px; height: ${cfg.size[1] - 5}px; display: flex;">
-          <div style="height: 100%; width: 33%; background-color: #CDDDFD">
-            <img alt="img" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
-          </div>
-          <span style="margin:auto; padding:auto; color: #5B8FF9">${
-            cfg.label
-          }</span>
-        </div>
-          `
+          path: [
+            ["M", 10 - cfg.r / 2, 10], // 10是round节点的w，h
+            ["L", 10 + cfg.r / 2, 10]
+          ],
+          lineCap: "round",
+          lineWidth: 4,
+          stroke: "red"
+        }
+      })
+    }
+
+    /**
+     * M113,34.1
+     * V8
+     * c0 -1.2 -1.4 -1.8 -2.2 -0.9
+     * L74.8,43
+     * c-0.5, 0.5 -0.5, 1.4, 0, 1.9
+     * l36, 36
+     * c 0.9, 0.9, 2.2 , 0.2, 2.2 -0.9
+     * V55.1
+     * c0 -0.7, 0.6 -1.3, 1.4 -1.3
+     * c31.7, 0.7, 57.4, 26.9, 57.4, 58.7
+     * c0, 9.4 -2.7, 18.9 -6.5, 26.6
+     * c-0.2, 0.5 -0.2, 1.1, 0.2, 1.5
+     * l12.8,12.8
+     * c0.6, 0.6, 1.7, 0.5, 2.1 -0.3
+     * c6.4 -12.3, 10.9 -25.5, 10.9 -40.5
+     * C191.3,69.4,156.1,34.1,113,34.1
+     * L113,34.1
+     * z
+     */
+    if (cfg.state === "DOING") {
+      const ratio = (cfg.r * 2) / 226.8 / 1.2
+      const path1 = transferG6Path(
+        "M113,34.1V8c0-1.2-1.4-1.8-2.2-0.9L74.8,43c-0.5,0.5-0.5,1.4,0,1.9l36,36c0.9,0.9,2.2,0.2,2.2-0.9V55.1  c0-0.7,0.6-1.3,1.4-1.3c31.7,0.7,57.4,26.9,57.4,58.7c0,9.4-2.7,18.9-6.5,26.6c-0.2,0.5-0.2,1.1,0.2,1.5l12.8,12.8  c0.6,0.6,1.7,0.5,2.1-0.3c6.4-12.3,10.9-25.5,10.9-40.5C191.3,69.4,156.1,34.1,113,34.1L113,34.1z",
+        ratio
+      )
+      const path2 = transferG6Path(
+        "M113,169.9c0,0.7-0.6,1.3-1.4,1.3c-31.7-0.7-57.4-26.9-57.4-58.7c0-9.5,2.7-18.9,6.5-26.6  c0.2-0.5,0.2-1.1-0.2-1.5L47.8,71.6c-0.6-0.6-1.7-0.5-2.1,0.3c-6.4,12.3-10.9,25.5-10.9,40.5c0,42.6,34.5,77.6,77,78.3  c0.7,0,1.3,0.6,1.3,1.3V217c0,1.2,1.4,1.8,2.2,0.9l36-36c0.5-0.5,0.5-1.4,0-1.9l-36-36c-0.9-0.9-2.2-0.2-2.2,0.9L113,169.9  L113,169.9z",
+        ratio
+      )
+      group.addShape("path", {
+        attrs: {
+          path: path1,
+          fill: "red",
+          lineWidth: 2,
+          stroke: "red"
+        }
+      })
+      group.addShape("path", {
+        attrs: {
+          path: path2,
+          fill: "red",
+          lineWidth: 2,
+          stroke: "red"
+        }
+      })
+    }
+
+    if (cfg.state === "DONE") {
+      const point = 8 // 这里是round节点的w
+      group.addShape("path", {
+        attrs: {
+          path: [
+            ["M", point - cfg.r / 2 + 2, point + 2],
+            ["L", point, point + cfg.r / 3 + 2],
+            ["L", point + cfg.r / 2 + 2, point - cfg.r / 2 + 2 + 2]
+          ],
+          lineCap: "round",
+          lineJoin: "round",
+          lineWidth: 4,
+          stroke: "white"
+        }
+      })
+    }
+
+    if (cfg.label) {
+      // 如果有文本
+      // 如果需要复杂的文本配置项，可以通过 labeCfg 传入
+      // const style = (cfg.labelCfg && cfg.labelCfg.style) || {};
+      // style.text = cfg.label;
+      const label = group.addShape("text", {
+        // attrs: style
+        attrs: {
+          x: cfg.r + 10 + 12, // 居中 10 是round节点的w，h
+          y: cfg.r / 2,
+          textAlign: "left",
+          textBaseline: "middle",
+          text: cfg.label,
+          fill: "#666"
         },
+        // must be assigned in G6 3.3 and later versions. it can be any value you want
+        name: "text-shape",
+        // 设置 draggable 以允许响应鼠标的图拽事件
         draggable: true
       })
     }
-  },
-  "single-node"
-)
 
-G6.registerNode(
-  "rect-xml",
-  (cfg) => `
-  <rect style={{
-    width: 100, height: 20, fill: '#1890ff', stroke: '#1890ff', radius: [6, 6, 0, 0]
-  }} keyshape="true" name="test">
-    <text style={{ 
-			marginTop: 2, 
-			marginLeft: 50, 
-      textAlign: 'center', 
-      fontWeight: 'bold', 
-      fill: '#fff' }} 
-			name="title">${cfg.label || cfg.id}</text>
-
-
-
-  </rect>
-`
-)
-
-const percentageBar = ({ width, used, height = 12 }) => `
-  <rect style={{
-    marginLeft: 10,
-    marginTop: 3,
-    width: ${width},
-    height: ${height},
-    fill: '#fff',
-    stroke: '#1890ff'
-  }} name="body" >
-    <rect style={{
-      marginLeft: 10,
-      width: ${(width / 100) * used},
-      height: ${height},
-      fill: '#1890ff',
-      stroke: '#1890ff'
-    }}/>
-  </rect>
-`
-
-const textXML = (cfg) => `
-<group>
-  <rect style={{
-    width: 100, height: 20, fill: '#1890ff', stroke: '#1890ff', radius: [6, 6, 0, 0]
-  }}>
-    <text style={{ marginTop: 2, marginLeft: 50, 
-			textAlign: 'center',
-			fontWeight: 'bold', 
-			fill: '#fff' }}>${cfg.id}</text>
-  </rect>
-  <rect style={{ width: 100, height: 80, fill: 'rgba(24,144,255,0.15)', 
-		radius: [0, 0, 6, 6] }} 
-		keyshape="true" 
-		cursor="move">
-    <text style={{marginLeft: 10 ,fill: "red"}}>hah</text>
-    <text style={{ marginTop: 5, marginLeft: 10, fill: '#333'}}>${cfg.metric}: </text>
-    <text style={{
-      marginTop: 1,
-      marginLeft: 20,
-      fontSize: 10,
-      fill: '#1890ff',
-    }}>${cfg.cpuUsage}%</text>
-
-  </rect>
-</group>
-`
-
-G6.registerNode("test-xml", textXML)
+    return keyShape
+  }
+})
 
 const data = {
   nodes: [
     {
-      id: "circle",
-      label: "Circle",
-      x: 250,
-      y: 150,
-      type: "modelRect"
+      id: "node1",
+      size: [20, 20],
+      label: "萝卜",
+      r: 3,
+      type: "round",
+      color: "black"
     },
     {
       id: "node2",
-      label: "node2",
-      x: 300,
-      y: 400,
-      // 该节点可选的连接点集合，该点有两个可选的连接点
-      anchorPoints: [
-        [0.5, 0],
-        [1, 0.5]
-      ],
-      type: "rect"
+      label: "去皮",
+      state: "DOING",
+      r: 20,
+      type: "work-node",
+      color: "black"
+    },
+    {
+      id: "node3",
+      label: "切丝",
+      state: "UNDO",
+      r: 20,
+      type: "work-node",
+      color: "black"
+    },
+    {
+      id: "node4",
+      label: "牛腩",
+      size: [20, 20],
+      r: 3,
+      type: "round",
+      color: "black"
+    },
+    {
+      id: "node5",
+      label: "清洗",
+      state: "DONE",
+      size: [20, 20],
+      r: 20,
+      type: "work-node",
+      color: "black"
+    },
+    {
+      id: "node6",
+      label: "潲水",
+      state: "DONE",
+      size: [20, 20],
+      r: 20,
+      type: "work-node",
+      color: "black"
+    },
+    {
+      id: "node7",
+      label: "萝卜牛腩",
+      size: [20, 20],
+      r: 3,
+      type: "round",
+      color: "black"
     }
   ],
   edges: [
     {
-      source: "node2",
-      target: "node1",
-      // 该边连入 source 点的第 1 个 anchorPoint，
-      sourceAnchor: 1,
-      // 该边连入 source 点的第 1 个 anchorPoint，
-      targetAnchor: 1,
-      style: {
-        endArrow: true
-      }
+      source: "node1",
+      target: "node2"
     },
     {
       source: "node2",
-      target: "node1",
-      // 该边连入 source 点的第 1 个 anchorPoint，
-      sourceAnchor: 1,
-      // 该边连入 source 点的第 1 个 anchorPoint，
-      targetAnchor: 1,
-      style: {
-        endArrow: true
-      }
+      target: "node3"
+    },
+    {
+      source: "node3",
+      target: "node7"
+    },
+    {
+      source: "node4",
+      target: "node5"
+    },
+    {
+      source: "node5",
+      target: "node6"
+    },
+    {
+      source: "node6",
+      target: "node7"
     }
   ]
 }
@@ -219,18 +319,25 @@ const graph = new G6.Graph({
   container: "g6",
   width: 500,
   height: 500,
-  defaultNode: {
-    linkPoints: {
-      top: true,
-      right: true,
-      bottom: true,
-      left: true,
-      // the diameter of the linkPoint
-      size: 10,
-      lineWidth: 1,
-      fill: "#fff",
-      stroke: "#1890FF"
+  modes: {
+    default: ["drag-canvas"]
+  },
+  defaultEdge: {
+    type: "polyline",
+    style: {
+      lineWidth: 3
     }
+  },
+  defaultNode: {
+    anchorPoints: [
+      [0.5, 1],
+      [0.5, 0]
+    ]
+  },
+  layout: {
+    type: "dagre",
+    rankdir: "TB",
+    ranksep: 20
   }
 })
 graph.data(data)
