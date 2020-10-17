@@ -1,6 +1,4 @@
 // test string
-const path_string =
-  "M113,34.1V8c0-1.2-1.4-1.8-2.2-0.9L74.8,43c-0.5,0.5-0.5,1.4,0,1.9l36,36c0.9,0.9,2.2,0.2,2.2-0.9V55.1  c0-0.7,0.6-1.3,1.4-1.3c31.7,0.7,57.4,26.9,57.4,58.7c0,9.4-2.7,18.9-6.5,26.6c-0.2,0.5-0.2,1.1,0.2,1.5l12.8,12.8  c0.6,0.6,1.7,0.5,2.1-0.3c6.4-12.3,10.9-25.5,10.9-40.5C191.3,69.4,156.1,34.1,113,34.1L113,34.1z"
 // MoveTo: M, m
 // LineTo: L, l, H, h, V, v
 // Cubic Bézier Curve: C, c, S, s
@@ -31,7 +29,7 @@ const key = {
   z: "z"
 }
 
-export function transferG6Path(path, ratio) {
+export function transferArrayPath(path, ratio = 1) {
   const pathArray = []
 
   let pathArrayIndex = -1
@@ -43,9 +41,6 @@ export function transferG6Path(path, ratio) {
     const needNew = !!key[str]
     if (needNew) {
       if (strNumber.trim() !== '') {
-        if(key[str] === 'M') {
-          console.log({strNumber})
-        }
         pathArray[pathArrayIndex].push(Number(strNumber) * ratio)
         strNumber = ""
       }
@@ -69,4 +64,15 @@ export function transferG6Path(path, ratio) {
     }
   }
   return pathArray
+}
+
+const reg = /(M(\d|\,|\.)+)/g
+const checked = /\s\d/g
+// G6@3.8.1存在问题，直接使用svg的path绘制出来的图像会错位，解决方法是复制一遍M命令
+// 转化为G6支持的格式
+export function adjustPath(path){
+  if(checked.test(path)) {
+    throw new Error('path不支持，请将svg放入AI导出再使用')
+  }
+  return path.replace(reg, '$&z$&')
 }
