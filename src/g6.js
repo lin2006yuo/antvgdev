@@ -6,17 +6,19 @@ const round_w = 70 // 物料节点宽
 const round_h = 50 // 物料节点高
 const node_radius = 25 // 物料节点圆角
 
+const circle_radius = 20 // 半径
+
 // 拓展一个圆角rect
 G6.registerNode(
   "round",
   {
     draw(cfg, group) {
       const color = cfg.color
-      const w = cfg.size[0] || round_w
-      const h = cfg.size[1] || round_h
+      const w = cfg.size && cfg.size[0] || round_w
+      const h = cfg.size && cfg.size[1] || round_h
       const x = cfg.x || 0
       const y = cfg.y || 0
-      const r = cfg.r // 圆角半径
+      const r = cfg.r || node_radius// 圆角半径
 
       const path = [
         ["M", x + r, y],
@@ -158,7 +160,7 @@ G6.registerNode("work-node", {
     const style = G6.Util.mix(
       {},
       {
-        r: cfg.r,
+        r: cfg.r || circle_radius,
         x: round_w / 2, // 10是round节点的w
         y: round_h / 2, // 10是round节点的h
       },
@@ -175,8 +177,8 @@ G6.registerNode("work-node", {
     })
 
     // 三角图标
-    const w = cfg.r * 2
-    const h = cfg.r * 2
+    const w = circle_radius * 2
+    const h = circle_radius * 2
     const tri_r = 5
     const tri_point = [w / 2 + round_w / 2 + 4, round_h / 2 - tri_r / 2] // 10是round节点的w，h
     group.addShape("polygon", {
@@ -194,8 +196,8 @@ G6.registerNode("work-node", {
       group.addShape("path", {
         attrs: {
           path: [
-            ["M", round_w / 2 - cfg.r / 2, round_h / 2], // 10是round节点的w，h
-            ["L", round_w / 2 + cfg.r / 2, round_h / 2],
+            ["M", round_w / 2 - circle_radius / 2, round_h / 2], // 10是round节点的w，h
+            ["L", round_w / 2 + circle_radius / 2, round_h / 2],
           ],
           lineCap: "round",
           lineWidth: 4,
@@ -205,7 +207,7 @@ G6.registerNode("work-node", {
     }
 
     if (cfg.state === "DOING") {
-      const ratio = (cfg.r * 2) / 226.8 / 1.2 // 226.8为svg viewBox值
+      const ratio = (circle_radius * 2) / 226.8 / 1.2 // 226.8为svg viewBox值
       // 转化为G6支持的格式
       const path1 = adjustPath(`
       M113,169.9c0,0.7-0.6,1.3-1.4,1.3c-31.7-0.7-57.4-26.9-57.4-58.7c0-9.5,2.7-18.9,6.5-26.6  c0.2-0.5,0.2-1.1-0.2-1.5L47.8,71.6c-0.6-0.6-1.7-0.5-2.1,0.3c-6.4,12.3-10.9,25.5-10.9,40.5c0,42.6,34.5,77.6,77,78.3  c0.7,0,1.3,0.6,1.3,1.3V217c0,1.2,1.4,1.8,2.2,0.9l36-36c0.5-0.5,0.5-1.4,0-1.9l-36-36c-0.9-0.9-2.2-0.2-2.2,0.9L113,169.9  L113,169.9z
@@ -225,8 +227,8 @@ G6.registerNode("work-node", {
       const newMatrix = G6.Util.transform(matrix, [
         [
           "t",
-          round_w / 2 / ratio - cfg.r / ratio + 20,
-          round_h / 2 / ratio - cfg.r / ratio + 20,
+          round_w / 2 / ratio - circle_radius / ratio + 20,
+          round_h / 2 / ratio - circle_radius / ratio + 20,
         ], // 20padding值
         ["s", ratio, ratio], // 旋转 45 度
       ])
@@ -239,9 +241,9 @@ G6.registerNode("work-node", {
       group.addShape("path", {
         attrs: {
           path: [
-            ["M", point_x - cfg.r / 2 + 2, point_y + 2],
-            ["L", point_x, point_y + cfg.r / 3 + 2],
-            ["L", point_x + cfg.r / 2 + 2, point_y - cfg.r / 2 + 2 + 2],
+            ["M", point_x - circle_radius / 2 + 2, point_y + 2],
+            ["L", point_x, point_y + circle_radius / 3 + 2],
+            ["L", point_x + circle_radius / 2 + 2, point_y - circle_radius / 2 + 2 + 2],
           ],
           lineCap: "round",
           lineJoin: "round",
@@ -254,8 +256,8 @@ G6.registerNode("work-node", {
     if (cfg.label) {
       const label = group.addShape("text", {
         attrs: {
-          x: cfg.r + round_w / 2 + 12,
-          y: cfg.r / 2 + round_h / 2 - 10,
+          x: circle_radius + round_w / 2 + 12,
+          y: circle_radius / 2 + round_h / 2 - 10,
           textAlign: "left",
           textBaseline: "middle",
           text: cfg.label,
@@ -269,15 +271,16 @@ G6.registerNode("work-node", {
 
     return keyShape
   },
+  afterDraw(cfg, group) {
+    console.log(1)
+  }
 })
 
 const data = {
   nodes: [
     {
       id: "node1",
-      size: [round_w, round_h],
       label: "萝卜",
-      r: node_radius,
       type: "round",
       state: 'material',
       color: "red",
@@ -286,7 +289,6 @@ const data = {
       id: "node2",
       label: "去皮",
       state: "DOING",
-      r: 20,
       type: "work-node",
       color: "red",
     },
@@ -294,15 +296,12 @@ const data = {
       id: "node3",
       label: "切丝",
       state: "UNDO",
-      r: 20,
       type: "work-node",
       color: "red",
     },
     {
       id: "node4",
       label: "牛腩",
-      size: [round_w, round_h],
-      r: node_radius,
       type: "round",
       state: 'material',
       color: "red",
@@ -311,7 +310,6 @@ const data = {
       id: "node5",
       label: "清洗",
       state: "DONE",
-      r: 20,
       type: "work-node",
       color: "red",
     },
@@ -319,7 +317,6 @@ const data = {
       id: "node6",
       label: "潲水",
       state: "DONE",
-      r: 20,
       type: "work-node",
       color: "red",
     },
@@ -327,15 +324,12 @@ const data = {
       id: "node7",
       label: "大火慢炖",
       state: "UNDO",
-      r: 20,
       type: "work-node",
       color: "red",
     },
     {
       id: "node8",
       label: "萝卜牛腩",
-      size: [round_w, round_h],
-      r: node_radius,
       type: "round",
       state: "product",
       color: "red",
@@ -344,6 +338,7 @@ const data = {
   edges: [
     {
       source: "node1",
+      color: 'red',
       target: "node2",
     },
     {
@@ -357,21 +352,20 @@ const data = {
     {
       source: "node4",
       target: "node5",
+      color: 'red'
     },
     {
       source: "node5",
       target: "node6",
+      color: 'red'
     },
     {
       source: "node6",
       target: "node7",
+      color: 'red'
     },
     {
       source: "node7",
-      style: {
-        stroke: 'green',
-        lineWidth: 3
-      },
       target: "node8",
     },
   ],

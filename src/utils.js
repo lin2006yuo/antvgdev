@@ -40,7 +40,7 @@ export function transferArrayPath(path, ratio = 1) {
 
     const needNew = !!key[str]
     if (needNew) {
-      if (strNumber.trim() !== '') {
+      if (strNumber.trim() !== "") {
         pathArray[pathArrayIndex].push(Number(strNumber) * ratio)
         strNumber = ""
       }
@@ -69,10 +69,26 @@ export function transferArrayPath(path, ratio = 1) {
 const reg = /(M(\d|\,|\.)+)/g
 const checked = /\s\d/g
 // G6@3.8.1存在问题，直接使用svg的path绘制出来的图像会错位，解决方法是复制一遍M命令
-// 转化为G6支持的格式
-export function adjustPath(path){
-  if(checked.test(path)) {
-    throw new Error('path不支持，请将svg放入AI导出再使用')
+export function adjustPath(path) {
+  // 校验G6支持的格式
+  if (checked.test(path)) {
+    throw new Error("path不支持，请将svg放入AI导出再使用")
   }
-  return path.replace(reg, '$&z$&')
+  return path.replace(reg, "$&z$&")
+}
+
+
+/**
+ * 处理nodes样式
+ * @param {} nodes 
+ */
+
+export function processNode(nodes, options) {
+  return nodes.map(node => {
+    const size = [options.width, options.height]
+    
+    if(node.type === 'round') {
+      node.size = [size]
+    }
+  })
 }
